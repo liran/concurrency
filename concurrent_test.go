@@ -18,5 +18,5 @@ func TestConcurrent(t *testing.T) {
 		fmt.Println("i:", i)
 		pool.Process(i)
 	}
-	time.Sleep(3 * time.Second)
+	pool.WaitingIDLE()
 }

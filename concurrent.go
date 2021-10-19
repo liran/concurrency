@@ -6,6 +6,7 @@ import (
 
 type Pool struct {
 	queue          chan interface{}
+	idle           chan interface{}
 	worker         func(input interface{})
 	totalThreads   atomic.Int64
 	createdThreads atomic.Int64
@@ -19,6 +20,7 @@ func New(threads int64, worker func(input interface{})) *Pool {
 
 	pool := &Pool{
 		queue:  make(chan interface{}),
+		idle:   make(chan interface{}),
 		worker: worker,
 	}
 	pool.totalThreads.Store(threads)
@@ -40,12 +42,19 @@ func (c *Pool) Process(input interface{}) {
 
 				c.busyThreads.Inc()
 				c.worker(task)
-				c.busyThreads.Dec()
+				n := c.busyThreads.Dec()
+				if n == 0 {
+					c.idle <- 1
+				}
 			}
 		}()
 	}
 
 	c.queue <- input
+}
+
+func (c *Pool) WaitingIDLE() {
+	<-c.idle
 }
 
 func (c *Pool) Close() {
