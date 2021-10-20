@@ -7,13 +7,13 @@ import (
 type Pool struct {
 	queue          chan interface{}
 	idle           chan interface{}
-	worker         func(input interface{})
+	worker         func(params ...interface{})
 	totalThreads   atomic.Int64
 	createdThreads atomic.Int64
 	busyThreads    atomic.Int64
 }
 
-func New(threads int64, worker func(input interface{})) *Pool {
+func New(threads int64, worker func(params ...interface{})) *Pool {
 	if threads < 1 {
 		threads = 1
 	}
@@ -27,7 +27,7 @@ func New(threads int64, worker func(input interface{})) *Pool {
 	return pool
 }
 
-func (c *Pool) Process(input interface{}) {
+func (c *Pool) Process(params ...interface{}) {
 	total := c.totalThreads.Load()
 	busy := c.busyThreads.Load()
 	created := c.createdThreads.Load()
@@ -41,7 +41,7 @@ func (c *Pool) Process(input interface{}) {
 				}
 
 				c.busyThreads.Inc()
-				c.worker(task)
+				c.worker(task.([]interface{})...)
 				n := c.busyThreads.Dec()
 				if n == 0 {
 					c.idle <- 1
@@ -50,13 +50,14 @@ func (c *Pool) Process(input interface{}) {
 		}()
 	}
 
-	c.queue <- input
+	c.queue <- params
 }
 
-func (c *Pool) WaitingIDLE() {
+func (c *Pool) Wait() {
 	<-c.idle
 }
 
 func (c *Pool) Close() {
 	close(c.queue)
+	close(c.idle)
 }
