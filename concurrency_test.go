@@ -1,4 +1,4 @@
-package concurrent
+package concurrency
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestConcurrent(t *testing.T) {
+func TestConcurrency(t *testing.T) {
 	// Create a thread pool that can allocate up to 10 threads
 	pool := New(10, func(params ...interface{}) {
 		n := params[0].(int)

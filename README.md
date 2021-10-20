@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/liran/concurrent"
+	"github.com/liran/concurrency"
 )
 
 func main() {

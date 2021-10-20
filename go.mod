@@ -1,4 +1,4 @@
-module github.com/liran/concurrent
+module github.com/liran/concurrency
 
 go 1.16
 

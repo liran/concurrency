@@ -1,4 +1,4 @@
-package concurrent
+package concurrency
 
 import (
 	"go.uber.org/atomic"
