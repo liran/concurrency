@@ -7,6 +7,7 @@ import (
 )
 
 func TestConcurrent(t *testing.T) {
+	// Create a thread pool that can allocate up to 10 threads
 	pool := New(10, func(params ...interface{}) {
 		n := params[0].(int)
 		w := params[1].(string)
@@ -16,9 +17,14 @@ func TestConcurrent(t *testing.T) {
 	defer pool.Close()
 
 	for i := 0; i < 10; i++ {
-		fmt.Println("i:", i)
+		fmt.Println("a:", i)
 		pool.Process(i, "hello")
 	}
+	pool.Wait()
 
+	for i := 0; i < 10; i++ {
+		fmt.Println("b:", i)
+		pool.Process(i, "world")
+	}
 	pool.Wait()
 }
