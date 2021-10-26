@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Create a thread pool that can allocate up to 10 threads
-	pool := New(10, func(params ...interface{}) {
+	pool := concurrency.New(10, func(params ...interface{}) {
 		n := params[0].(int)
 		w := params[1].(string)
 		time.Sleep(time.Second)
