@@ -25,10 +25,18 @@ func main() {
 	}
 	pool.Wait()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		fmt.Println("b:", i)
 		pool.Process(i, "world")
 	}
+
+	// Multiple threads will be notified at the same time
+	go func() {
+		pool.Wait()
+		fmt.Println("wait on go thread ")
+	}()
+
 	pool.Wait()
+	fmt.Println("wait on main thread")
 }
 ```

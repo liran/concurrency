@@ -1,16 +1,19 @@
 package concurrency
 
 import (
+	"time"
+
+	"github.com/docker/docker/pkg/pubsub"
 	"go.uber.org/atomic"
 )
 
 type Pool struct {
 	queue          chan interface{}
-	idle           chan interface{}
 	worker         func(params ...interface{})
 	totalThreads   atomic.Int64
 	createdThreads atomic.Int64
 	busyThreads    atomic.Int64
+	publisher      *pubsub.Publisher
 }
 
 func New(threads int, worker func(params ...interface{})) *Pool {
@@ -19,9 +22,9 @@ func New(threads int, worker func(params ...interface{})) *Pool {
 	}
 
 	pool := &Pool{
-		queue:  make(chan interface{}),
-		idle:   make(chan interface{}),
-		worker: worker,
+		queue:     make(chan interface{}),
+		publisher: pubsub.NewPublisher(time.Millisecond*100, 0),
+		worker:    worker,
 	}
 	pool.totalThreads.Store(int64(threads))
 	return pool
@@ -46,7 +49,7 @@ func (c *Pool) Process(params ...interface{}) {
 				c.worker(task.([]interface{})...)
 				n := c.busyThreads.Dec()
 				if n == 0 {
-					c.idle <- 1
+					c.publisher.Publish(1)
 				}
 			}
 		}()
@@ -56,10 +59,12 @@ func (c *Pool) Process(params ...interface{}) {
 }
 
 func (c *Pool) Wait() {
-	<-c.idle
+	s := c.publisher.Subscribe()
+	<-s
+	c.publisher.Evict(s)
 }
 
 func (c *Pool) Close() {
 	close(c.queue)
-	close(c.idle)
+	c.publisher.Close()
 }
