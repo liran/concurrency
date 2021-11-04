@@ -19,7 +19,7 @@ func main() {
 	})
 	defer pool.Close()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		fmt.Println("a:", i)
 		pool.Process(i, "hello")
 	}
