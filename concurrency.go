@@ -13,7 +13,7 @@ type Pool struct {
 	busyThreads    atomic.Int64
 }
 
-func New(threads int64, worker func(params ...interface{})) *Pool {
+func New(threads int, worker func(params ...interface{})) *Pool {
 	if threads < 1 {
 		threads = 1
 	}
@@ -23,7 +23,7 @@ func New(threads int64, worker func(params ...interface{})) *Pool {
 		idle:   make(chan interface{}),
 		worker: worker,
 	}
-	pool.totalThreads.Store(threads)
+	pool.totalThreads.Store(int64(threads))
 	return pool
 }
 
@@ -34,6 +34,8 @@ func (c *Pool) Process(params ...interface{}) {
 	if busy == created && created < total {
 		c.createdThreads.Inc()
 		go func() {
+			defer c.createdThreads.Dec()
+
 			for {
 				task, ok := <-c.queue
 				if !ok {
