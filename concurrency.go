@@ -59,6 +59,10 @@ func (c *Pool) Process(params ...interface{}) {
 }
 
 func (c *Pool) Wait() {
+	if c.busyThreads.Load() == 0 {
+		return
+	}
+
 	s := c.publisher.Subscribe()
 	<-s
 	c.publisher.Evict(s)
