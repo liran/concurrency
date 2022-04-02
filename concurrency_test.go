@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 )
@@ -35,4 +36,18 @@ func TestConcurrency(t *testing.T) {
 
 	pool.Wait()
 	fmt.Println("wait on main thread")
+}
+
+func TestSingleTask(t *testing.T) {
+	pool := New(10, func(params ...interface{}) {
+		task := params[0].(int)
+		time.Sleep(time.Second)
+		fmt.Println("run", task)
+	})
+	defer pool.Close()
+	for i := 0; i < 10000; i++ {
+		pool.Process(i)
+	}
+	pool.Wait()
+	log.Println("complete")
 }

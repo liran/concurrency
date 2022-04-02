@@ -59,7 +59,7 @@ func (c *Pool) Process(params ...interface{}) {
 }
 
 func (c *Pool) Wait() {
-	if c.busyThreads.Load() == 0 {
+	if len(c.queue) < 1 && c.busyThreads.Load() < 1 {
 		return
 	}
 
