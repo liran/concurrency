@@ -1,74 +1,93 @@
 package concurrency
 
 import (
+	"context"
+	"sync"
 	"time"
 
-	"github.com/docker/docker/pkg/pubsub"
 	"go.uber.org/atomic"
 )
 
 type Pool struct {
-	queue          chan interface{}
-	worker         func(params ...interface{})
-	totalThreads   atomic.Int64
-	createdThreads atomic.Int64
-	busyThreads    atomic.Int64
-	publisher      *pubsub.Publisher
+	queue   chan any
+	worker  func(params ...any)
+	total   int64
+	created int64
+	busy    atomic.Int64
+	m       sync.Mutex
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
-func New(threads int, worker func(params ...interface{})) *Pool {
+func New(threads int, worker func(params ...any)) *Pool {
 	if threads < 1 {
 		threads = 1
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	pool := &Pool{
-		queue:     make(chan interface{}),
-		publisher: pubsub.NewPublisher(time.Millisecond*100, 0),
-		worker:    worker,
+		queue:  make(chan any),
+		worker: worker,
+		total:  int64(threads),
+		ctx:    ctx,
+		cancel: cancel,
 	}
-	pool.totalThreads.Store(int64(threads))
 	return pool
 }
 
-func (c *Pool) Process(params ...interface{}) {
-	total := c.totalThreads.Load()
-	busy := c.busyThreads.Load()
-	created := c.createdThreads.Load()
-	if busy == created && created < total {
-		c.createdThreads.Inc()
-		go func() {
-			defer c.createdThreads.Dec()
+func (c *Pool) Process(params ...any) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
-			for {
-				task, ok := <-c.queue
-				if !ok {
-					return
-				}
+	select {
+	case <-c.ctx.Done():
+	default:
+		// try to create a new goroutine
+		busy := c.busy.Load()
+		if c.created < c.total && busy == c.created {
+			c.created++
+			go func() {
+				for {
+					select {
+					case <-c.ctx.Done():
+						return
+					default:
+						task, ok := <-c.queue
+						if !ok {
+							return
+						}
 
-				c.busyThreads.Inc()
-				c.worker(task.([]interface{})...)
-				n := c.busyThreads.Dec()
-				if n == 0 {
-					c.publisher.Publish(1)
+						c.busy.Inc()
+						c.worker(task.([]any)...)
+						c.busy.Dec()
+					}
 				}
-			}
-		}()
+			}()
+		}
+
+		c.queue <- params
 	}
-
-	c.queue <- params
 }
 
 func (c *Pool) Wait() {
-	if len(c.queue) < 1 && c.busyThreads.Load() < 1 {
-		return
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		default:
+			if c.busy.Load() < 1 {
+				return
+			}
+			time.Sleep(time.Second / 3)
+		}
 	}
-
-	s := c.publisher.Subscribe()
-	<-s
-	c.publisher.Evict(s)
 }
 
 func (c *Pool) Close() {
-	close(c.queue)
-	c.publisher.Close()
+	select {
+	case <-c.ctx.Done():
+	default:
+		c.cancel()
+		close(c.queue)
+	}
 }

@@ -1,8 +1,5 @@
-module github.com/liran/concurrency
+module github.com/liran/concurrency/v2
 
-go 1.16
+go 1.18
 
-require (
-	github.com/docker/docker v20.10.10+incompatible
-	go.uber.org/atomic v1.9.0
-)
+require go.uber.org/atomic v1.9.0
