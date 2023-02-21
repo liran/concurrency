@@ -25,13 +25,13 @@ func TestSingleTask(t *testing.T) {
 	}()
 
 	pool.Wait()
+	log.Println("main")
+
 	pool.Wait()
-	pool.Close()
 	for i := 0; i < 10; i++ {
 		pool.Process(i)
 	}
 	pool.Wait()
-	pool.Close()
 	log.Printf("complete, uptime: %s", time.Since(uptime))
 }
 
